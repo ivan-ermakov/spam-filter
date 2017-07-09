@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
-#include "sf.h"
+#include "lib/sf.h"
 
 char* msg = NULL;
 
@@ -20,8 +20,9 @@ void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 	buf_t* b = (buf_t*) server->data;
 	if (b->len - b->pos < nread)
 	{
-		char* m = (char*) malloc(nread + b->pos);
-		if (!m)
+		b->len = nread + b->pos;
+		b->base = (char*) realloc(b->base, b->len);
+		if (!b->base)
 		{
 			uv_handle_t* handle = (uv_handle_t*) server;
 			buf_t* buf = (buf_t*) handle->data;
@@ -29,28 +30,17 @@ void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 			free(buf);
 			uv_close(handle, NULL);
 			return;
-		}
-		
-		memcpy(m, b->base, b->len);
-		free(b->base);
-		b->base = m;
-		b->len = nread + b->pos;
+		}		
 	}	
 	
 	memcpy(b->base + b->pos, buf->base, nread);
 	b->pos += nread;
 	
-	if (b->pos < 1) // redundant
-		return;
-	
-	int protocol_ver = *b->base; // uchar*
-	
-	fprintf(stderr, "Protocol version: %d\n", protocol_ver);
+	int protocol_ver = *((unsigned char*)b->base);
 	
 	if (protocol_ver != PROTOCOL_VER)
 	{
 		fprintf(stderr, "Protocol version mismatch: %d\n", protocol_ver);
-		// close good
 		uv_close((uv_handle_t*) server, NULL);
 		return;
 	}
@@ -60,7 +50,7 @@ void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 		
 	msg_type_t msg_type = (msg_type_t) *(b->base + 1);
 	
-	printf("Server: %s\n", msg_type == HAM ? "HAM" : "SPAM");
+	printf("Server%d: %s\n", protocol_ver, msg_type == MSG_TYPE_HAM ? "HAM" : "SPAM");
 	uv_close((uv_handle_t*) server, NULL);
 }
 
@@ -69,12 +59,12 @@ void on_write_end(uv_write_t *req, int status)
 	if (status < 0)
 	{
 		fprintf(stderr, "Write error: %s\n", uv_strerror(status));
-		// error!
+		uv_close((uv_handle_t*) req->handle, NULL);
 		return;
 	}
 	
 	buf_t* buf = (buf_t*) malloc(sizeof(buf_t));
-    buf->len = 2;
+    buf->len = 0;
     buf->base = (char*) malloc(buf->len);
     buf->pos = 0;
     
@@ -88,7 +78,6 @@ void on_connect(uv_connect_t* connect, int status)
     if (status < 0)
     {
         fprintf(stderr, "Connection error: %s\n", uv_strerror(status));
-        // error!
         return;
     }
 	

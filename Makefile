@@ -3,7 +3,7 @@ include config.mk
 BIN_DIR = bin
 OBJS_DIR = obj
 
-INCLUDE = -Ilib
+INCLUDE = -I.
 LIBS = -luv
 
 CFLAGS = -fPIC $(CPPFLAGS) $(OPTIMIZE) $(INCLUDE) $(LIBS)
@@ -11,7 +11,8 @@ CFLAGS = -fPIC $(CPPFLAGS) $(OPTIMIZE) $(INCLUDE) $(LIBS)
 LIB_HEADERS = $(INCLUDE)/sf.h
 LIB_OBJS = $(OBJS_DIR)/lib/sf.o
 CLIENT_OBJS = $(OBJS_DIR)/client/main.o
-SERVER_OBJS = $(OBJS_DIR)/server/main.o
+SERVER_HEADERS = server/spam_filter.h
+SERVER_OBJS = $(OBJS_DIR)/server/main.o $(OBJS_DIR)/server/spam_filter.o
 
 .PHONY: all clean
 
@@ -28,8 +29,8 @@ dir:
 	[ -d $(BIN_DIR) ] || mkdir $(BIN_DIR)
 
 $(SHARED_LIB): $(LIB_OBJS)
-	$(CC) -shared -Wl,-soname,$(SONAME) -o $(BIN_DIR)/$(SHARED_LIB) $(LIB_OBJS)
-	ln -fs $(BIN_DIR)/$(SHARED_LIB) $(SONAME)
+	$(CC) -shared -Wl,-soname,$(BIN_DIR)/$(SONAME) -o $(BIN_DIR)/$(SHARED_LIB) $(LIB_OBJS)
+	ln -fs $(SHARED_LIB) $(BIN_DIR)/$(SONAME)
 
 $(STATIC_LIB): $(LIB_OBJS)
 	  $(AR) $(ARFLAGS) $(BIN_DIR)/$(STATIC_LIB) $(LIB_OBJS)
@@ -40,14 +41,14 @@ $(CLIENT): $(CLIENT_OBJS) $(BIN_DIR)/$(SHARED_LIB)
 $(CLIENT_STATIC): $(CLIENT_OBJS) $(BIN_DIR)/$(STATIC_LIB)
 	$(CC) $(CFLAGS) $(INCLUDE) $(LIBS) -o $(BIN_DIR)/$@ $^
 
-$(SERVER): $(SERVER_OBJS) $(BIN_DIR)/$(SHARED_LIB)
+$(SERVER): $(SERVER_OBJS) $(SERVER_HEADERS) $(BIN_DIR)/$(SHARED_LIB)
 	$(CC) $(CFLAGS) $(INCLUDE) $(LIBS) -lpcre2-8 -o $(BIN_DIR)/$@ $^
 
-$(SERVER_STATIC): $(SERVER_OBJS) $(BIN_DIR)/$(STATIC_LIB)
+$(SERVER_STATIC): $(SERVER_OBJS) $(SERVER_HEADERS) $(BIN_DIR)/$(STATIC_LIB)
 	$(CC) $(CFLAGS) $(INCLUDE) $(LIBS) -lpcre2-8 -o $(BIN_DIR)/$@ $^
 
 clean: cleanobj
-	rm -f $(CLIENT) $(CLIENT_STATIC) $(SERVER) $(SERVER_STATIC) *.so* *.a
+	rm -f $(BIN_DIR)/$(CLIENT) $(BIN_DIR)/$(CLIENT_STATIC) $(BIN_DIR)/$(SERVER) $(BIN_DIR)/$(SERVER_STATIC) $(BIN_DIR)/*.so* $(BIN_DIR)/*.a
 
 cleanobj:
 	rm -f $(OBJS_DIR)/*/*.o

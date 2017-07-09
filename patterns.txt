@@ -1,0 +1,9 @@
+viagra 99
+diplom -99
+\d+\s*min 100
+exclusively 70
+unsubscribe -100
+(fail(+palm 19
+82
+free 50
+(order|buy)\s+(now)? 100

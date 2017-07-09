@@ -2,11 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
-
-#define PCRE2_CODE_UNIT_WIDTH 8
-#include <pcre2.h>
-
-#include "sf.h"
+#include "lib/sf.h"
+#include "spam_filter.h"
 
 const int DEFAULT_BACKLOG = 128;
 
@@ -37,8 +34,9 @@ void on_read(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 	buf_t* b = (buf_t*) client->data;
 	if (b->len - b->pos < nread)
 	{
-		char* m = (char*) malloc(nread + b->pos);
-		if (!m)
+		b->len = nread + b->pos;
+		b->base = (char*) realloc(b->base, b->len);
+		if (!b->base)
 		{
 			uv_handle_t* handle = (uv_handle_t*) client;
 			buf_t* buf = (buf_t*) handle->data;
@@ -47,27 +45,16 @@ void on_read(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 			uv_close(handle, NULL);
 			return;
 		}
-		
-		memcpy(m, b->base, b->len);
-		free(b->base);
-		b->base = m;
-		b->len = nread + b->pos;
 	}	
 	
 	memcpy(b->base + b->pos, buf->base, nread);
 	b->pos += nread;
 	
-	if (b->pos < 1) // redundant
-		return;
-	
-	int protocol_ver = *b->base; // uchar*
-	
-	fprintf(stderr, "Protocol version: %d\n", protocol_ver);
+	int protocol_ver = *((unsigned char*)b->base);
 	
 	if (protocol_ver != PROTOCOL_VER)
 	{
 		fprintf(stderr, "Protocol version mismatch: %d\n", protocol_ver);
-		// close good
 		uv_close((uv_handle_t*) client, NULL);
 		return;
 	}
@@ -76,7 +63,6 @@ void on_read(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 		return;
 	
 	int msg_len = *((int*) (b->base + 1));
-	fprintf(stderr, "Message length: %d\n", msg_len);
 	
 	if (b->pos < msg_len + 5)
 		return;
@@ -85,13 +71,13 @@ void on_read(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 	memcpy(msg, b->base + 5, msg_len);
 	msg[msg_len] = '\0';
 	
-	printf("Client %d: '%s'\n", msg_len, msg);
+	printf("Client%d [%d]: '%s'\n", protocol_ver, msg_len, msg);
 	
 	uv_write_t* write_req = (uv_write_t*) malloc(sizeof(uv_write_t));
 
     uv_buf_t bf = uv_buf_init(malloc(2), 2);
     *bf.base = PROTOCOL_VER;
-    *(bf.base + 1) = HAM;
+    *(bf.base + 1) = check_msg_type(msg);
 
     write_req->data = client;
     uv_write(write_req, (uv_stream_t*) client, &bf, 1, on_write);
@@ -102,7 +88,6 @@ void on_new_connection(uv_stream_t* server, int status)
     if (status < 0)
     {
         fprintf(stderr, "New connection error %s\n", uv_strerror(status));
-        // error!
         return;
     }
 
@@ -110,7 +95,7 @@ void on_new_connection(uv_stream_t* server, int status)
     uv_tcp_init(uv_default_loop(), client);
     
     buf_t* buf = (buf_t*) malloc(sizeof(buf_t));
-    buf->len = 1024;
+    buf->len = 0;
     buf->base = (char*) malloc(buf->len);
     buf->pos = 0;
     
@@ -126,8 +111,14 @@ void on_new_connection(uv_stream_t* server, int status)
     }
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+	if (load_patterns() == 0)
+	{
+		printf("No patterns to match\n");
+		return 1;
+	}
+	
     uv_tcp_t server;
     uv_tcp_init(uv_default_loop(), &server);
 	
@@ -144,5 +135,8 @@ int main()
     
     ret = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
     uv_loop_close(uv_default_loop());
+    
+    free_patterns();
+    
     return ret;
 }
