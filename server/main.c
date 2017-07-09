@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <uv.h>
 #include "lib/sf.h"
 #include "spam_filter.h"
@@ -111,19 +112,43 @@ void on_new_connection(uv_stream_t* server, int status)
     }
 }
 
+static void print_usage(char* argv[])
+{
+   fprintf(stderr, "Spam filter version: %u.%u\n", VERSION_MAJOR, VERSION_MINOR);
+   fprintf(stderr, "Usage: %s [port]\n", argv[0]);
+}
+
 int main(int argc, char* argv[])
 {
+	int port = DEFAULT_PORT;
+	
+	if (argc == 2)
+	{
+		sscanf(argv[1], "%d", &port);
+			
+		if (port <= 0 || port > USHRT_MAX)
+		{
+			print_usage(argv);
+			return 2;
+		}
+	}
+	else if (argc != 1)
+	{
+		print_usage(argv);
+		return 1;
+	}
+	
 	if (load_patterns() == 0)
 	{
 		printf("No patterns to match\n");
-		return 1;
+		return 3;
 	}
 	
     uv_tcp_t server;
     uv_tcp_init(uv_default_loop(), &server);
 	
 	struct sockaddr_in addr;
-    uv_ip4_addr("0.0.0.0", DEFAULT_PORT, &addr);
+    uv_ip4_addr("0.0.0.0", port, &addr);
 
     uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
     int ret = uv_listen((uv_stream_t*) &server, DEFAULT_BACKLOG, on_new_connection);
@@ -132,6 +157,8 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Listen error %s\n", uv_strerror(ret));
         return ret;
     }
+    
+    printf("Listening on port %d\n", port);
     
     ret = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
     uv_loop_close(uv_default_loop());
