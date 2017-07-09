@@ -144,15 +144,38 @@ int main(int argc, char* argv[])
 	uv_tcp_init(uv_default_loop(), &socket);
 
 	uv_connect_t connect;
+	
+	// Resolve adress
+	
+	struct addrinfo hints;
+    hints.ai_family = PF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = 0;
 
+    uv_getaddrinfo_t resolver;
+    fprintf(stderr, "%s is... ", ip);
+    int ret = uv_getaddrinfo(uv_default_loop(), &resolver, NULL, ip, NULL /* port */, &hints);
+	
+	char addr[17] = {};
+	
+    if (ret == 0)
+    {
+		uv_ip4_name((struct sockaddr_in*) resolver.addrinfo->ai_addr, addr, sizeof(addr) - 1);
+		fprintf(stderr, "%s\n", addr);
+		ip = addr;
+	}
+    
 	struct sockaddr_in dest;
-	int ret = uv_ip4_addr(ip, port, &dest);
+	ret = uv_ip4_addr(ip, port, &dest);
 	if (ret < 0)
     {
         fprintf(stderr, "Ip adress error: %s\n", uv_strerror(ret));
         print_usage(argv);
         return ret;
     }
+    
+    // Connect
 	
 	printf("Connecting to %s:%d...\n", ip, port);
 	uv_tcp_connect(&connect, &socket, (const struct sockaddr*) &dest, on_connect);
