@@ -5,6 +5,6 @@
 
 int load_patterns();
 void free_patterns();
-msg_type_t check_msg_type(const char* msg);
+int check_msg_type(const char* msg, msg_type_t* msg_type);
 
 #endif

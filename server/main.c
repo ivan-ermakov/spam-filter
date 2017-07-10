@@ -75,10 +75,12 @@ void on_read(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 	printf("Client%d [%d]: '%s'\n", protocol_ver, msg_len, msg);
 	
 	uv_write_t* write_req = (uv_write_t*) malloc(sizeof(uv_write_t));
-
+	
+	msg_type_t msg_type;
+	int ret = check_msg_type(msg, &msg_type);
     uv_buf_t bf = uv_buf_init(malloc(2), 2);
-    *bf.base = PROTOCOL_VER;
-    *(bf.base + 1) = check_msg_type(msg);
+    *bf.base = ret;
+    *(bf.base + 1) = msg_type;
 
     write_req->data = client;
     uv_write(write_req, (uv_stream_t*) client, &bf, 1, on_write);

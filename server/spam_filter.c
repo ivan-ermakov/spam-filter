@@ -115,7 +115,7 @@ void free_patterns()
 	free(patterns_weight);
 }
 
-msg_type_t check_msg_type(const char* msg)
+int check_msg_type(const char* msg, msg_type_t* msg_type)
 {
 	int score = 0;
 	const int MIN_SPAM_SCORE = 90;
@@ -144,12 +144,14 @@ msg_type_t check_msg_type(const char* msg)
 					continue;
 				default:
 					printf("Matching error %d\n", rc);
-					continue;
+					*msg_type = MSG_TYPE_HAM;
+					return rc;
 			}
 		}
 		
 		score += patterns_weight[i];
 	}
 	
-	return score >= MIN_SPAM_SCORE ? MSG_TYPE_SPAM : MSG_TYPE_HAM;
+	*msg_type = score >= MIN_SPAM_SCORE ? MSG_TYPE_SPAM : MSG_TYPE_HAM;
+	return 0;
 }

@@ -37,21 +37,13 @@ void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 	memcpy(b->base + b->pos, buf->base, nread);
 	b->pos += nread;
 	
-	int protocol_ver = *((unsigned char*)b->base);
-	
-	if (protocol_ver != PROTOCOL_VER)
-	{
-		fprintf(stderr, "Protocol version mismatch: %d\n", protocol_ver);
-		uv_close((uv_handle_t*) server, NULL);
-		return;
-	}
-	
 	if (b->pos < 2)
 		return;
-		
+	
+	int error = *((unsigned char*)b->base);
 	msg_type_t msg_type = (msg_type_t) *(b->base + 1);
 	
-	printf("Server%d: %s\n", protocol_ver, msg_type == MSG_TYPE_HAM ? "HAM" : "SPAM");
+	printf("Server <%d>: %s\n", error, msg_type == MSG_TYPE_HAM ? "HAM" : "SPAM");
 	uv_close((uv_handle_t*) server, NULL);
 }
 
