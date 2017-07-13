@@ -10,7 +10,7 @@ LIB_HEADERS = $(INCLUDE)/sf.h
 LIB_OBJS = $(OBJS_DIR)/lib/sf.o
 CLIENT_OBJS = $(OBJS_DIR)/client/main.o
 SERVER_HEADERS = server/spam_filter.h
-SERVER_OBJS = $(OBJS_DIR)/server/main.o $(OBJS_DIR)/server/spam_filter.o
+SERVER_OBJS = $(OBJS_DIR)/server/main.o $(OBJS_DIR)/server/server.o $(OBJS_DIR)/server/client.o $(OBJS_DIR)/server/spam_filter.o
 
 .PHONY: all clean
 

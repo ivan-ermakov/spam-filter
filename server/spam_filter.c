@@ -2,31 +2,28 @@
 #include <string.h>
 #include <ctype.h>
 
-#define PCRE2_CODE_UNIT_WIDTH 8
-#include <pcre2.h>
-
 #include "spam_filter.h"
 
-static int patterns_size = 0;
-static int patterns_capacity = 0;
-static int* patterns_weight = NULL;
-static pcre2_code** patterns = NULL;
-static pcre2_match_data** pattern_match_data = NULL;
-
-int load_patterns()
+sf_err_t spam_filter_init(spam_filter_t* sf, char* file_name)
 {	
 	char* line = NULL;
 	size_t line_len = 0;
 	ssize_t ret;
 	int errornumber;
 	PCRE2_SIZE erroroffset;
+
+	sf->patterns_size = 0;
+	sf->patterns_capacity = 0;
+	sf->patterns_weight = NULL;
+	sf->patterns = NULL;
+   	sf->pattern_match_data = NULL;
 	
-	FILE* f = fopen("patterns.txt", "r");
+	FILE* f = fopen(file_name, "r");
 	
 	if (!f)
 	{
 		fprintf(stderr, "Unable to load patterns\n");
-		return 0;
+		return SF_EFAIL;
 	}
 	
 	while ((ret = getline(&line, &line_len, f)) > 0)
@@ -79,18 +76,18 @@ int load_patterns()
 			continue;
 		}
 		
-		if (patterns_size == patterns_capacity)
+		if (sf->patterns_size == sf->patterns_capacity)
 		{
-			patterns_capacity = patterns_capacity == 0 ? 16 : patterns_capacity * 2;
-			patterns_weight = realloc(patterns_weight, patterns_capacity * sizeof(int));
-			patterns = realloc(patterns, patterns_capacity * sizeof(pcre2_code*));
-			pattern_match_data = realloc(pattern_match_data, patterns_capacity * sizeof(pcre2_match_data*));
+			sf->patterns_capacity = sf->patterns_capacity == 0 ? 16 : sf->patterns_capacity * 2;
+			sf->patterns_weight = realloc(sf->patterns_weight, sf->patterns_capacity * sizeof(int));
+			sf->patterns = realloc(sf->patterns, sf->patterns_capacity * sizeof(pcre2_code*));
+			sf->pattern_match_data = realloc(sf->pattern_match_data, sf->patterns_capacity * sizeof(pcre2_match_data*));
 		}
 		
-		patterns[patterns_size] = re;
-		patterns_weight[patterns_size] = weight;
-		pattern_match_data[patterns_size] = pcre2_match_data_create_from_pattern(re, NULL);
-		++patterns_size;
+		sf->patterns[sf->patterns_size] = re;
+		sf->patterns_weight[sf->patterns_size] = weight;
+		sf->pattern_match_data[sf->patterns_size] = pcre2_match_data_create_from_pattern(re, NULL);
+		++sf->patterns_size;
 		
 		printf("Loaded pattern: '%s' %d\n", line, weight);
 	}
@@ -98,24 +95,24 @@ int load_patterns()
 	fclose(f);
 	free(line);
 	
-	printf("Loaded %d patterns\n", patterns_size);
+	printf("Loaded %d patterns\n", sf->patterns_size);
 	
-	return patterns_size;
+	return sf->patterns_size == 0;
 }
 
-void free_patterns()
+void spam_filter_deinit(spam_filter_t* sf)
 {
-	for (int i = 0; i < patterns_size; ++i)
+	for (int i = 0; i < sf->patterns_size; ++i)
 	{
-		pcre2_match_data_free(pattern_match_data[i]);
-		pcre2_code_free(patterns[i]);
+		pcre2_match_data_free(sf->pattern_match_data[i]);
+		pcre2_code_free(sf->patterns[i]);
 	}
 		
-	free(patterns);
-	free(patterns_weight);
+	free(sf->patterns);
+	free(sf->patterns_weight);
 }
 
-int check_msg_type(const char* msg, msg_type_t* msg_type)
+sf_err_t spam_filter_check_msg(spam_filter_t* sf, const char* msg, msg_type_t* msg_type)
 {
 	int score = 0;
 	const int MIN_SPAM_SCORE = 90;
@@ -123,15 +120,15 @@ int check_msg_type(const char* msg, msg_type_t* msg_type)
 	PCRE2_SPTR subject = (PCRE2_SPTR) msg;
 	size_t subject_length = strlen(msg);
 	
-	for (int i = 0; i < patterns_size; ++i)
+	for (int i = 0; i < sf->patterns_size; ++i)
 	{
 		int rc = pcre2_match(
-		  patterns[i],                   /* the compiled pattern */
+		  sf->patterns[i],                   /* the compiled pattern */
 		  subject,              /* the subject string */
 		  subject_length,       /* the length of the subject */
 		  0,                    /* start at offset 0 in the subject */
 		  0,                    /* default options */
-		  pattern_match_data[i],           /* block for storing the result */
+		  sf->pattern_match_data[i],           /* block for storing the result */
 		  NULL);                /* use default match context */
 
 		/* Matching failed: handle error cases */
@@ -149,9 +146,9 @@ int check_msg_type(const char* msg, msg_type_t* msg_type)
 			}
 		}
 		
-		score += patterns_weight[i];
+		score += sf->patterns_weight[i];
 	}
 	
 	*msg_type = score >= MIN_SPAM_SCORE ? MSG_TYPE_SPAM : MSG_TYPE_HAM;
-	return 0;
+	return SF_EOK;
 }
