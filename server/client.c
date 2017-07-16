@@ -3,8 +3,7 @@
 
 void client_init(client_t* c, server_t* s)
 {
-    c->buf.base = NULL;
-    c->buf.len = 0;
+    c->buf = uv_buf_init(NULL, 0);
     uv_tcp_init(uv_default_loop(), &c->sock);
     c->sock.data = c;
     c->server = s;
@@ -12,7 +11,8 @@ void client_init(client_t* c, server_t* s)
 
 void client_free(client_t* c)
 {
-    uv_close((uv_handle_t*) &c->sock, NULL);
+    //uv_close((uv_handle_t*) &c->sock, NULL);
     free(c->buf.base);
 	free(c);
+    fprintf(stderr, "Client freed");
 }

@@ -46,15 +46,20 @@ void server_free(server_t* serv)
     uv_close((uv_handle_t*) &serv->sock, NULL);
 }
 
+void on_close(uv_handle_t* sock)
+{
+	client_free((client_t*) sock->data);
+}
+
 void on_write(uv_write_t* req, int status)
 {
-	client_t* client = (client_t*) req->data;
+	client_t* client = (client_t*) req->handle->data;
 
 	if (status < 0)
 		fprintf(stderr, "Write error: %s\n", uv_strerror(status));
 	
-	client_free(client);
 	free(req);
+	uv_close((uv_handle_t*) &client->sock, on_close);
 }
 
 void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
@@ -89,6 +94,8 @@ void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 	
 	if (client->buf.len < msg_len + 5)
 		return;
+
+	uv_read_stop(sock);
 		
 	char* msg = malloc(msg_len + 1);
 	memcpy(msg, client->buf.base + 5, msg_len);
@@ -101,7 +108,7 @@ void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 	/* Response */
 	
 	msg_type_t msg_type;
-	int ret = spam_filter_check_msg(&client->server->sf, msg, &msg_type); /* TODO */
+	int ret = spam_filter_check_msg(&client->server->sf, msg, &msg_type);
 	free(msg);
 
     client->buf = uv_buf_init(malloc(2), 2);
