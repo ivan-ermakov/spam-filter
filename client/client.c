@@ -1,9 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
-#include "lib/sf.h"
 #include "lib/buf.h"
 #include "client.h"
-
+#include "protocol.h"
 
 void on_connect(uv_connect_t* connect, int status);
 
@@ -18,14 +17,14 @@ void client_free(client_t* c)
 {
     uv_close((uv_handle_t*) &c->sock, NULL);
 	free(c->buf.base);
-	//free(c);
+	/* free(c); */
 }
 
 int client_check_msg(client_t* c, char* ip, int port, char* msg)
 {	
 	c->msg = msg;
 
-	// Resolve adress
+	/* Resolve adress */
 	
 	struct addrinfo hints;
     hints.ai_family = PF_INET;
@@ -79,12 +78,13 @@ void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 		
 	buf_append(&client->buf, buf->base, nread);
 	free(buf->base);
+
+
+	int error;
+	msg_type_t msg_type;
 	
-	if (client->buf.len < 2)
+	if (sf_protocol_read_response(&client->buf, &error, &msg_type) != 0)
 		return;
-	
-	int error = *((unsigned char*) client->buf.base);
-	msg_type_t msg_type = *(client->buf.base + 1);
 	
 	printf("Server <%d>: %s\n", error, msg_type == MSG_TYPE_HAM ? "HAM" : "SPAM");
 	client_free(client);
@@ -120,10 +120,11 @@ void on_connect(uv_connect_t* connect, int status)
     }	
 
 	client->buf = uv_buf_init(NULL, 0);
-	buf_append(&client->buf, (char*) &PROTOCOL_VER, sizeof(PROTOCOL_VER));
-	int slen = strlen(client->msg);
-	buf_append(&client->buf, (char*) &slen, sizeof(slen));
-	buf_append(&client->buf, client->msg, slen);
+	sf_protocol_write_request(&client->buf, client->msg);
+	// buf_append(&client->buf, (char*) &PROTOCOL_VER, sizeof(PROTOCOL_VER));
+	// int slen = strlen(client->msg);
+	// buf_append(&client->buf, (char*) &slen, sizeof(slen));
+	// buf_append(&client->buf, client->msg, slen);
 
 	uv_write_t* write_req = (uv_write_t*) malloc(sizeof(uv_write_t));
 	write_req->data = client;

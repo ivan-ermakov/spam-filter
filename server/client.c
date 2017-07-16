@@ -11,8 +11,6 @@ void client_init(client_t* c, server_t* s)
 
 void client_free(client_t* c)
 {
-    //uv_close((uv_handle_t*) &c->sock, NULL);
     free(c->buf.base);
 	free(c);
-    fprintf(stderr, "Client freed");
 }

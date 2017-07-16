@@ -1,15 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <uv.h>
-
 #include "lib/sf.h"
 #include "lib/buf.h"
-
 #include "client.h"
 #include "server.h"
 #include "spam_filter.h"
+#include "protocol.h"
 
 const int DEFAULT_BACKLOG = 128;
 
@@ -69,7 +67,7 @@ void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 	if (nread < 0)
 	{
 		fprintf(stderr, "Read error: %s\n", uv_strerror(nread));
-		client_free(client);
+		uv_close((uv_handle_t*) &client->sock, on_close);
 		return;
 	}
 	else if (nread == 0)
@@ -77,43 +75,32 @@ void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 	
 	buf_append(&client->buf, buf->base, nread);
 	free(buf->base);
-	
-	int protocol_ver = *((unsigned char*) client->buf.base);
-	
-	if (protocol_ver != PROTOCOL_VER)
+
+		
+	char* msg = NULL;
+	int ret = sf_protocol_read_request(&client->buf, &msg);
+	if (ret < 0)
 	{
-		fprintf(stderr, "Protocol version mismatch: %d\n", protocol_ver);
-		client_free(client);
+		uv_close((uv_handle_t*) &client->sock, on_close);
 		return;
 	}
-	
-	if (client->buf.len < 5)
-		return;
-	
-	int msg_len = *((int*) (client->buf.base + 1));
-	
-	if (client->buf.len < msg_len + 5)
+	else if (ret > 0)
 		return;
 
 	uv_read_stop(sock);
-		
-	char* msg = malloc(msg_len + 1);
-	memcpy(msg, client->buf.base + 5, msg_len);
-	msg[msg_len] = '\0';
 	
-	printf("Client%d [%d]: '%s'\n", protocol_ver, msg_len, msg);
+	printf("Client: '%s'\n", msg);
 
 	free(client->buf.base);
 
 	/* Response */
 	
 	msg_type_t msg_type;
-	int ret = spam_filter_check_msg(&client->server->sf, msg, &msg_type);
+	ret = spam_filter_check_msg(&client->server->sf, msg, &msg_type);
 	free(msg);
 
-    client->buf = uv_buf_init(malloc(2), 2);
-    *client->buf.base = ret;
-    *(client->buf.base + 1) = msg_type;
+    client->buf = uv_buf_init(NULL, 0);
+	sf_protocol_write_response(&client->buf, ret, msg_type);
 
 	uv_write_t* write_req = (uv_write_t*) malloc(sizeof(uv_write_t));
 	write_req->data = client;
@@ -138,7 +125,7 @@ void on_new_connection(uv_stream_t* serv_sock, int status)
         uv_read_start((uv_stream_t*) &client->sock, alloc_buffer, on_read);
     else
     {
-        client_free(client);
+        uv_close((uv_handle_t*) &client->sock, on_close);
         fprintf(stderr, "Failed to accept connection %s\n", uv_strerror(status));
     }
 }
