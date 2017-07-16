@@ -110,6 +110,8 @@ void spam_filter_deinit(spam_filter_t* sf)
 		
 	free(sf->patterns);
 	free(sf->patterns_weight);
+	free(sf->pattern_match_data);
+	sf->patterns_size = 0;
 }
 
 sf_err_t spam_filter_check_msg(spam_filter_t* sf, const char* msg, msg_type_t* msg_type)

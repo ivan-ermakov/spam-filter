@@ -6,10 +6,11 @@ OBJS_DIR = obj
 INCLUDE = -I.
 LIBS = -luv
 
-LIB_HEADERS = $(INCLUDE)/sf.h
-LIB_OBJS = $(OBJS_DIR)/lib/sf.o
-CLIENT_OBJS = $(OBJS_DIR)/client/main.o
-SERVER_HEADERS = server/spam_filter.h
+LIB_HEADERS = $(INCLUDE)/sf.h $(INCLUDE)/buf.h
+LIB_OBJS = $(OBJS_DIR)/lib/sf.o $(OBJS_DIR)/lib/buf.o
+CLIENT_HEADERS = client/client.h
+CLIENT_OBJS = $(OBJS_DIR)/client/main.o $(OBJS_DIR)/client/client.o
+SERVER_HEADERS = server/server.h server/client.h server/spam_filter.h
 SERVER_OBJS = $(OBJS_DIR)/server/main.o $(OBJS_DIR)/server/server.o $(OBJS_DIR)/server/client.o $(OBJS_DIR)/server/spam_filter.o
 
 .PHONY: all clean
@@ -31,12 +32,12 @@ $(SHARED_LIB): $(LIB_OBJS)
 	ln -fs $(SHARED_LIB) $(BIN_DIR)/$(SONAME)
 
 $(STATIC_LIB): $(LIB_OBJS)
-	  $(AR) $(ARFLAGS) $(BIN_DIR)/$(STATIC_LIB) $(LIB_OBJS)
+	$(AR) $(ARFLAGS) $(BIN_DIR)/$(STATIC_LIB) $(LIB_OBJS)
 
-$(CLIENT): $(CLIENT_OBJS) $(BIN_DIR)/$(SHARED_LIB)
+$(CLIENT): $(CLIENT_OBJS) $(CLIENT_HEADERS) $(BIN_DIR)/$(SHARED_LIB)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $(BIN_DIR)/$@ $^ $(LIBS)
 
-$(CLIENT_STATIC): $(CLIENT_OBJS) $(BIN_DIR)/$(STATIC_LIB)
+$(CLIENT_STATIC): $(CLIENT_OBJS) $(CLIENT_HEADERS) $(BIN_DIR)/$(STATIC_LIB)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $(BIN_DIR)/$@ $^ $(LIBS)
 
 $(SERVER): $(SERVER_OBJS) $(SERVER_HEADERS) $(BIN_DIR)/$(SHARED_LIB)
