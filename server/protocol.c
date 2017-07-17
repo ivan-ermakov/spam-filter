@@ -20,16 +20,17 @@ int sf_protocol_read_request(uv_buf_t* buf, char** msg)
 		return 1;
 	
 	int msg_len = *((int*) (buf->base + 1));
+	fprintf(stderr, "Msg len: %d\n", msg_len);
 	
 	if (buf->len < msg_len + 5)
 		return 1;
     
-    *msg = malloc(msg_len + 1);
+    *msg = calloc(msg_len + 1, 1);
     if (!*msg)
         return -2;
 
     memcpy(*msg, buf->base + 5, msg_len);
-	*msg[msg_len] = '\0';
+	(*msg)[msg_len] = '\0';
 
     return 0;
 }

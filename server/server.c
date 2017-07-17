@@ -13,6 +13,11 @@ const int DEFAULT_BACKLOG = 128;
 
 void on_new_connection(uv_stream_t* serv_sock, int status);
 
+void server_signal_close(uv_signal_t* signal_handle, int signum)
+{
+	server_free((server_t*) signal_handle->data);
+}
+
 int server_init(server_t* serv, int port)
 {	
 	if (spam_filter_init(&serv->sf, "patterns.txt") == SF_EFAIL)
@@ -33,6 +38,19 @@ int server_init(server_t* serv, int port)
         fprintf(stderr, "Listen error %s\n", uv_strerror(ret));
         return ret;
     }
+
+	/* signals */
+	
+    uv_signal_init(uv_default_loop(), &serv->sigterm);
+	serv->sigterm.data = serv;
+    uv_signal_start(&serv->sigterm, server_signal_close, SIGTERM);
+    
+    uv_signal_init(uv_default_loop(), &serv->sigint);
+	serv->sigint.data = serv;
+    uv_signal_start(&serv->sigint, server_signal_close, SIGINT);
+
+    uv_unref((uv_handle_t *) &serv->sigterm);
+    uv_unref((uv_handle_t *) &serv->sigint);
     
     printf("Listening on port %d\n", port);
     return ret;
@@ -42,6 +60,8 @@ void server_free(server_t* serv)
 {
     spam_filter_deinit(&serv->sf);
     uv_close((uv_handle_t*) &serv->sock, NULL);
+	uv_close((uv_handle_t*) &serv->sigint, NULL);
+	uv_close((uv_handle_t*) &serv->sigterm, NULL);
 }
 
 void on_close(uv_handle_t* sock)
@@ -73,12 +93,19 @@ void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 	else if (nread == 0)
 		return;
 	
-	buf_append(&client->buf, buf->base, nread);
-	free(buf->base);
+	int ret;
+	if ((ret = buf_append(&client->buf, buf->base, nread)) < 0)
+	{
+		fprintf(stderr, "Buffer error: %s\n", uv_strerror(ret));
+		free(buf->base);
+		uv_close((uv_handle_t*) &client->sock, on_close);
+		return;
+	}
 
+	free(buf->base);
 		
 	char* msg = NULL;
-	int ret = sf_protocol_read_request(&client->buf, &msg);
+	ret = sf_protocol_read_request(&client->buf, &msg);
 	if (ret < 0)
 	{
 		uv_close((uv_handle_t*) &client->sock, on_close);
@@ -88,6 +115,13 @@ void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 		return;
 
 	uv_read_stop(sock);
+
+	if (!msg)
+	{
+		fprintf(stderr, "Msg error\n");
+		uv_close((uv_handle_t*) &client->sock, on_close);
+		return;
+	}
 	
 	printf("Client: '%s'\n", msg);
 
@@ -119,13 +153,14 @@ void on_new_connection(uv_stream_t* serv_sock, int status)
 	if (!client)
 		return;
 
-    client_init(client, (server_t*) serv_sock->data);
+    if (client_init(client, (server_t*) serv_sock->data) < 0)
+		return;
     
     if ((status = uv_accept(serv_sock, (uv_stream_t*) &client->sock)) == 0)
         uv_read_start((uv_stream_t*) &client->sock, alloc_buffer, on_read);
     else
     {
-        uv_close((uv_handle_t*) &client->sock, on_close);
         fprintf(stderr, "Failed to accept connection %s\n", uv_strerror(status));
+		uv_close((uv_handle_t*) &client->sock, on_close);
     }
 }

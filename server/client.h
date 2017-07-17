@@ -15,7 +15,7 @@ typedef struct client_s
 	server_t* server;
 } client_t;
 
-void client_init(client_t* c, server_t* s);
+int client_init(client_t* c, server_t* s);
 void client_free(client_t* c);
 
 #endif

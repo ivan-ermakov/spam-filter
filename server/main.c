@@ -74,7 +74,5 @@ int main(int argc, char* argv[])
     ret = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
     uv_loop_close(uv_default_loop());
     
-    server_free(&server);
-    
     return ret;
 }
