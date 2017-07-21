@@ -7,7 +7,7 @@
 #include "client.h"
 #include "server.h"
 #include "spam_filter.h"
-#include "protocol.h"
+#include "lib/protocol.h"
 
 struct server_s
 {

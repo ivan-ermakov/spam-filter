@@ -2,7 +2,7 @@
 #include <string.h>
 #include "lib/buf.h"
 #include "client.h"
-#include "protocol.h"
+#include "lib/protocol.h"
 
 struct client_s
 {
