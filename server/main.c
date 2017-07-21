@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 #include <getopt.h>
@@ -65,14 +66,15 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
-    server_t server;
-	int ret = server_init(&server, port);
+    server_t* server = server_init(port);
 
-	if (ret)
-        return ret;
+	if (!server)
+        return 2;
     
-    ret = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+    int ret = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
     uv_loop_close(uv_default_loop());
+
+	free(server);
     
     return ret;
 }

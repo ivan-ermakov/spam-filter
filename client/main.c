@@ -92,18 +92,15 @@ int main(int argc, char* argv[])
 
 	msg = argv[optind];
 	
-    client_t client;
+    client_t* client = client_init();
 
-	int ret = client_init(&client);
-	if (ret)
-		return ret;
+	if (!client)
+		return 2;
 
-	client_check_msg(&client, ip, port, msg);
+	client_check_msg(client, ip, port, msg);
 
-    ret = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+    int ret = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
     uv_loop_close(uv_default_loop());
-
-	/* client_free(&client); */
 
     return ret;
 }

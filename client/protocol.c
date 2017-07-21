@@ -4,7 +4,8 @@
 
 int sf_protocol_write_request(uv_buf_t* buf, char* msg)
 {
-    buf_append(buf, (char*) &PROTOCOL_VER, sizeof(PROTOCOL_VER));
+	unsigned char protocol_ver = PROTOCOL_VER;
+    buf_append(buf, (char*) &protocol_ver, sizeof(protocol_ver));
 	int slen = strlen(msg);
 	buf_append(buf, (char*) &slen, sizeof(slen));
 	buf_append(buf, msg, slen);

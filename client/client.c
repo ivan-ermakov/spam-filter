@@ -4,20 +4,40 @@
 #include "client.h"
 #include "protocol.h"
 
-void on_connect(uv_connect_t* connect, int status);
-
-int client_init(client_t* c)
+struct client_s
 {
+    uv_tcp_t sock;
+    uv_connect_t connect;
+    uv_buf_t buf;
+    char* msg;
+};
+
+static void on_connect(uv_connect_t* connect, int status);
+
+client_t* client_init()
+{
+	client_t* c = (client_t*) malloc(sizeof(client_t));
 	c->buf = uv_buf_init(NULL, 0);
 	c->sock.data = c;
-    return uv_tcp_init(uv_default_loop(), &c->sock);
+    
+	if (uv_tcp_init(uv_default_loop(), &c->sock))
+	{
+		free(c);
+		return NULL;
+	}
+
+	return c;
+}
+
+static void client_on_close(uv_handle_t* sock)
+{
+	free(sock->data);
 }
 
 void client_free(client_t* c)
 {
-    uv_close((uv_handle_t*) &c->sock, NULL);
 	free(c->buf.base);
-	/* free(c); */
+    uv_close((uv_handle_t*) &c->sock, client_on_close);
 }
 
 int client_check_msg(client_t* c, char* ip, int port, char* msg)
@@ -62,7 +82,7 @@ int client_check_msg(client_t* c, char* ip, int port, char* msg)
     return 0;
 }
 
-void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
+static void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 {
 	client_t* client = (client_t*) server->data;
 
@@ -90,7 +110,7 @@ void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 	client_free(client);
 }
 
-void on_write_end(uv_write_t* req, int status)
+static void on_write_end(uv_write_t* req, int status)
 {
 	client_t* client = (client_t*) req->data;
 	free(req);
@@ -108,7 +128,7 @@ void on_write_end(uv_write_t* req, int status)
 	uv_read_start((uv_stream_t*) &client->sock, alloc_buffer, on_read);
 }
 
-void on_connect(uv_connect_t* connect, int status)
+static void on_connect(uv_connect_t* connect, int status)
 {
 	client_t* client = (client_t*) connect->handle->data;
 
@@ -121,10 +141,6 @@ void on_connect(uv_connect_t* connect, int status)
 
 	client->buf = uv_buf_init(NULL, 0);
 	sf_protocol_write_request(&client->buf, client->msg);
-	// buf_append(&client->buf, (char*) &PROTOCOL_VER, sizeof(PROTOCOL_VER));
-	// int slen = strlen(client->msg);
-	// buf_append(&client->buf, (char*) &slen, sizeof(slen));
-	// buf_append(&client->buf, client->msg, slen);
 
 	uv_write_t* write_req = (uv_write_t*) malloc(sizeof(uv_write_t));
 	write_req->data = client;

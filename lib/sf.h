@@ -9,8 +9,11 @@ typedef enum
 	MSG_TYPE_SPAM
 } msg_type_t;
 
-extern const unsigned char PROTOCOL_VER;
-extern const int DEFAULT_PORT;
+enum
+{
+	PROTOCOL_VER = 0,
+	DEFAULT_PORT = 6000
+}
 
 void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
 

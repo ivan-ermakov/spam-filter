@@ -4,8 +4,18 @@
 
 #include "spam_filter.h"
 
-sf_err_t spam_filter_init(spam_filter_t* sf, char* file_name)
+struct spam_filter_s
+{
+    int patterns_size;
+    int patterns_capacity;
+    int* patterns_weight;
+    pcre2_code** patterns;
+    pcre2_match_data** pattern_match_data;
+};
+
+spam_filter_t* spam_filter_init(char* file_name)
 {	
+	spam_filter_t* sf = (spam_filter_t*) malloc(sizeof(spam_filter_t));
 	char* line = NULL;
 	size_t line_len = 0;
 	ssize_t ret;
@@ -23,7 +33,7 @@ sf_err_t spam_filter_init(spam_filter_t* sf, char* file_name)
 	if (!f)
 	{
 		fprintf(stderr, "Unable to load patterns\n");
-		return SF_EFAIL;
+		return NULL;
 	}
 	
 	while ((ret = getline(&line, &line_len, f)) > 0)
@@ -97,10 +107,10 @@ sf_err_t spam_filter_init(spam_filter_t* sf, char* file_name)
 	
 	printf("Loaded %d patterns\n", sf->patterns_size);
 	
-	return sf->patterns_size == 0;
+	return sf;
 }
 
-void spam_filter_deinit(spam_filter_t* sf)
+void spam_filter_free(spam_filter_t* sf)
 {
 	for (int i = 0; i < sf->patterns_size; ++i)
 	{
@@ -111,7 +121,7 @@ void spam_filter_deinit(spam_filter_t* sf)
 	free(sf->patterns);
 	free(sf->patterns_weight);
 	free(sf->pattern_match_data);
-	sf->patterns_size = 0;
+	free(sf);
 }
 
 sf_err_t spam_filter_check_msg(spam_filter_t* sf, const char* msg, msg_type_t* msg_type)
