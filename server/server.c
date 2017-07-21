@@ -72,7 +72,6 @@ void server_free(server_t* serv)
     spam_filter_free(serv->sf);
     uv_close((uv_handle_t*) &serv->sock, NULL);
 	uv_close((uv_handle_t*) &serv->sigint, NULL);
-	serv->sigterm.data = serv;
 	uv_close((uv_handle_t*) &serv->sigterm, NULL);
 }
 

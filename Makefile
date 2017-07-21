@@ -10,8 +10,8 @@ LIB_HEADERS = $(INCLUDE)/sf.h $(INCLUDE)/buf.h $(INCLUDE)/protocol.h
 LIB_OBJS = $(OBJS_DIR)/lib/sf.o $(OBJS_DIR)/lib/buf.o $(OBJS_DIR)/lib/protocol.o
 CLIENT_HEADERS = client/client.h
 CLIENT_OBJS = $(OBJS_DIR)/client/main.o $(OBJS_DIR)/client/client.o
-SERVER_HEADERS = server/server.h server/client.h server/spam_filter.h
-SERVER_OBJS = $(OBJS_DIR)/server/main.o $(OBJS_DIR)/server/server.o $(OBJS_DIR)/server/client.o $(OBJS_DIR)/server/spam_filter.o
+SERVER_HEADERS = server/server.h server/client.h server/spam_filter.h server/rule.h
+SERVER_OBJS = $(OBJS_DIR)/server/main.o $(OBJS_DIR)/server/server.o $(OBJS_DIR)/server/client.o $(OBJS_DIR)/server/spam_filter.o $(OBJS_DIR)/server/rule.o
 
 .PHONY: all clean
 
