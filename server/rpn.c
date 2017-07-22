@@ -30,18 +30,47 @@ static op_assoc_t op_get_associativity(char* op)
 	return OP_ASSOC_LEFT;
 }
 
+int get_token(char* exp, char** token)
+{
+	char* start = exp;
+	*token = NULL;
+
+	while (isspace(*start)) ++start;
+
+	if (!*start)
+		return 0;
+
+	char* end = start + 1;
+	if (isdigit(*start))
+	{
+		while (isdigit(*end)) ++end;
+	}
+	else if (*start == '&' || *start == '|')
+		++end;
+
+	int len = end - start;
+	*token = malloc(len + 1);
+	strncpy(*token, start, len);
+	(*token)[len] = '\0';
+
+	return end - exp;
+}
+
 rpn_t* rpn_init(char* exp)
 {
-	char* rpn = malloc(256 * sizeof(char));
-	char* token = strtok(exp, " ");
+	char* rpn = malloc((strlen(exp) * 2 + 1) * sizeof(char));
+	char* token;
 	char* cur = rpn;
 	char** op = NULL;
 	int op_size = 0;
 	int ret;
 
-	while (token)
+	ret = get_token(exp, &token);
+
+	while (ret > 0)
 	{
-		/*printf("Token: %s\n", token);*/
+		exp += ret;
+		/* printf("Token: '%s'\n", token); */
 
 		if (isdigit(*token)) /* if value */
 		{
@@ -110,9 +139,8 @@ rpn_t* rpn_init(char* exp)
 			strcpy(op[op_size - 1], token);
 		}	
 
-		/*printf("RPN: %s\n", rpn);*/
-
-		token = strtok(NULL, " ");
+		free(token);
+		ret = get_token(exp, &token);
 	}
 
 	while (op_size--)
@@ -129,8 +157,6 @@ rpn_t* rpn_init(char* exp)
 		cur += ret;
 	}
 
-	//printf("RPN: %s\n", rpn);
-
 	/* realloc ret - cur + 1 */
 	goto done;
 
@@ -139,6 +165,8 @@ free_rpn:
 	rpn = NULL;
 
 done:
+	free(token);
+
 	for (int i = 0; i < op_size; ++i)
 		free(op[i]);
 	free(op);

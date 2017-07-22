@@ -86,7 +86,7 @@ rule_t* rule_init(char* line)
 			goto free_rule;
 	}
 	
-	printf("Loaded pattern: %d %s %d '%s'\n", rule->id, type, rule->weight, rule->type == RULE_BOOL ? rule->rpn : line);
+	printf("Loaded rule: %d %s %d '%s'\n", rule->id, type, rule->weight, rule->type == RULE_BOOL ? rule->rpn : line);
 	goto done;
 
 free_rule:
@@ -110,9 +110,7 @@ void rule_free(rule_t* rule)
 }
 
 int rule_check(rule_t* rule, spam_filter_t* sf, const char* msg, msg_type_t* msg_type)
-{	
-	*msg_type = MSG_TYPE_HAM;
-	
+{		
 	if (rule->type == RULE_REGEX)
 	{
 		PCRE2_SPTR subject = (PCRE2_SPTR) msg;
@@ -150,13 +148,19 @@ int rule_check(rule_t* rule, spam_filter_t* sf, const char* msg, msg_type_t* msg
 		int ret = 0;
 		int* vals = NULL;
 		int vals_size = 0;
-		char* token = strtok(rule->rpn, " ");
+		char* token;
+		char* exp = rule->rpn;
 
-		while (token)
+		ret = get_token(exp, &token);
+
+		while (ret > 0)
 		{
+			exp += ret;
+
 			if (isdigit(*token)) /* if value */
 			{
 				int id = strtol(token, NULL, 10);
+				*msg_type = MSG_TYPE_HAM;
 				int ret = rule_check(spam_filter_get_rule(sf, id), sf, msg, msg_type); /* write value */
 				if (ret < 0)
 				{
@@ -210,7 +214,8 @@ int rule_check(rule_t* rule, spam_filter_t* sf, const char* msg, msg_type_t* msg
 				goto done;
 			}
 
-			token = strtok(NULL, " ");
+			free(token);
+			ret = get_token(exp, &token);
 		}
 
 		if (vals_size == 1)
@@ -226,6 +231,7 @@ int rule_check(rule_t* rule, spam_filter_t* sf, const char* msg, msg_type_t* msg
 		}
 
 		done:
+		free(token);
 		free(vals);
 		return ret;
 	}

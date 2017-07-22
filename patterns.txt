@@ -10,5 +10,6 @@
 -2 regex 2 wut
 9 regel 10 wut
 10 regex 0 wut
-11 bool 90 0 && ! ! ( 7 )
-12 bool 99 ( 1 && 8 ) 
+11 bool 90 0&&!!(7)
+12 bool 99 (1&&8) 
+13 bool 100 2 1
