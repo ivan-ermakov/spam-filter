@@ -2,6 +2,7 @@
 #define SPAM_FILTER_H
 
 #include "lib/sf.h"
+#include "rule.h"
 
 typedef enum
 {
@@ -14,5 +15,6 @@ typedef struct spam_filter_s spam_filter_t;
 spam_filter_t* spam_filter_init(char* file_name);
 void spam_filter_free(spam_filter_t* sf);
 sf_err_t spam_filter_check_msg(spam_filter_t* sf, const char* msg, msg_type_t* msg_type);
+rule_t* spam_filter_get_rule(spam_filter_t* sf, int id);
 
 #endif

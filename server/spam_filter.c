@@ -66,7 +66,7 @@ sf_err_t spam_filter_check_msg(spam_filter_t* sf, const char* msg, msg_type_t* m
 	
 	for (int i = 0; i < sf->rules_size; ++i)
 	{
-		int ret = rule_check(sf->rules[i], msg, msg_type);
+		int ret = rule_check(sf->rules[i], sf, msg, msg_type);
 
 		if (ret)
 			continue;
@@ -77,4 +77,13 @@ sf_err_t spam_filter_check_msg(spam_filter_t* sf, const char* msg, msg_type_t* m
 	
 	*msg_type = score >= MIN_SPAM_SCORE ? MSG_TYPE_SPAM : MSG_TYPE_HAM;
 	return SF_EOK;
+}
+
+rule_t* spam_filter_get_rule(spam_filter_t* sf, int id)
+{
+	for (int i = 0; i < sf->rules_size; ++i)
+		if (rule_get_id(sf->rules[i]) == id)
+			return sf->rules[i];
+
+	return NULL;
 }
