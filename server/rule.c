@@ -53,6 +53,9 @@ rule_t* rule_init(char* line)
 	while (*++line && (isdigit(*line)));
 	while (*++line && (isspace(*line)));
 
+	if (!*line)
+		goto free_rule;
+
 	line[strlen(line) - 1] = '\0'; /* skip \n */
 	
 	if (rule->type == RULE_REGEX)
@@ -221,7 +224,6 @@ int rule_check(rule_t* rule, spam_filter_t* sf, const char* msg, msg_type_t* msg
 		if (vals_size == 1)
 		{
 			*msg_type = vals[0];
-			printf("Rule %d: %d\n", rule->id, *msg_type);
 			ret = 0;
 		}
 		else

@@ -72,7 +72,10 @@ sf_err_t spam_filter_check_msg(spam_filter_t* sf, const char* msg, msg_type_t* m
 			continue;
 
 		if (*msg_type == MSG_TYPE_SPAM)		
+		{
 			score += rule_get_weight(sf->rules[i]);
+			printf("Rule %d triggered\n", rule_get_id(sf->rules[i]));
+		}
 	}
 	
 	*msg_type = score >= MIN_SPAM_SCORE ? MSG_TYPE_SPAM : MSG_TYPE_HAM;
