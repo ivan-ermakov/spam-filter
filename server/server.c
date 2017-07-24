@@ -27,13 +27,14 @@ void server_signal_close(uv_signal_t* signal_handle, int signum)
 server_t* server_init(int port)
 {	
 	server_t* serv = malloc(sizeof(server_t));
+	if (!serv)
+		goto fail;
 	
-	serv->sf = spam_filter_init("patterns.txt");
-
+	serv->sf = spam_filter_init("rules.txt");
 	if (!serv->sf)
 	{
-		printf("No patterns to match\n");
-		return NULL;
+		printf("No rules\n");
+		goto free_serv;
 	}
 
     uv_tcp_init(uv_default_loop(), &serv->sock);
@@ -45,25 +46,44 @@ server_t* server_init(int port)
     int ret = uv_listen((uv_stream_t*) &serv->sock, DEFAULT_BACKLOG, on_new_connection);
     if (ret)
     {
-		spam_filter_free(serv->sf);
         fprintf(stderr, "Listen error %s\n", uv_strerror(ret));
-        return NULL;
+        goto free_sf;
     }
 
 	/* signals */
 	
-    uv_signal_init(uv_default_loop(), &serv->sigterm);
+	if (uv_signal_init(uv_default_loop(), &serv->sigterm))
+		goto free_sigterm;
+
 	serv->sigterm.data = serv;
-    uv_signal_start(&serv->sigterm, server_signal_close, SIGTERM);
+	if (uv_signal_start(&serv->sigterm, server_signal_close, SIGTERM))
+		goto free_sigterm;
     
-    uv_signal_init(uv_default_loop(), &serv->sigint);
+	if (uv_signal_init(uv_default_loop(), &serv->sigint))
+		goto free_sigint;
+
 	serv->sigint.data = serv;
-    uv_signal_start(&serv->sigint, server_signal_close, SIGINT);
+	if (uv_signal_start(&serv->sigint, server_signal_close, SIGINT))
+		goto free_sigint;
 
     uv_unref((uv_handle_t *) &serv->sigterm);
     uv_unref((uv_handle_t *) &serv->sigint);
     
     printf("Listening on port %d\n", port);
+	goto done;
+
+free_sigterm:
+	uv_close((uv_handle_t*) &serv->sigterm, NULL);
+free_sigint:
+	uv_close((uv_handle_t*) &serv->sigint, NULL);
+free_sf:
+	spam_filter_free(serv->sf);
+free_serv:
+	free(serv);
+fail:
+	return NULL;
+
+done:
     return serv;
 }
 

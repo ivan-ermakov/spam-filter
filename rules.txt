@@ -13,3 +13,10 @@
 11 bool 90 0&&!!(7)
 12 bool 99 (1&&8) 
 13 bool 100 2 1
+14 bool 40 (1 || !2) && (3 || 7)
+15 bool 1 (
+16 bool 2 &
+17 bool 3 asl
+18 bool 4 !
+19 bool 5 || &&
+20 bool 6 )
