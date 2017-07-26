@@ -1,7 +1,7 @@
 #ifndef SPAM_FILTER_H
 #define SPAM_FILTER_H
 
-#include "lib/sf.h"
+#include "sf.h"
 #include "rule.h"
 
 typedef enum

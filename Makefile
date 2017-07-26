@@ -6,12 +6,12 @@ OBJS_DIR = obj
 INCLUDE = -I.
 LIBS = -luv
 
-LIB_HEADERS = $(INCLUDE)/sf.h $(INCLUDE)/buf.h $(INCLUDE)/protocol.h
-LIB_OBJS = $(OBJS_DIR)/lib/sf.o $(OBJS_DIR)/lib/buf.o $(OBJS_DIR)/lib/protocol.o
+LIB_HEADERS = $(INCLUDE)/sf.h $(INCLUDE)/buf.h $(INCLUDE)/protocol.h $(INCLUDE)/spam_filter.h $(INCLUDE)/rule.h $(INCLUDE)/rpn.h
+LIB_OBJS = $(OBJS_DIR)/lib/spam_filter.o $(OBJS_DIR)/lib/rule.o $(OBJS_DIR)/lib/rpn.o $(OBJS_DIR)/lib/sf.o $(OBJS_DIR)/lib/buf.o $(OBJS_DIR)/lib/protocol.o
 CLIENT_HEADERS = client/client.h
 CLIENT_OBJS = $(OBJS_DIR)/client/main.o $(OBJS_DIR)/client/client.o
-SERVER_HEADERS = server/server.h server/client.h server/spam_filter.h server/rule.h server/rpn.h
-SERVER_OBJS = $(OBJS_DIR)/server/main.o $(OBJS_DIR)/server/server.o $(OBJS_DIR)/server/client.o $(OBJS_DIR)/server/spam_filter.o $(OBJS_DIR)/server/rule.o $(OBJS_DIR)/server/rpn.o
+SERVER_HEADERS = server/server.h server/client.h
+SERVER_OBJS = $(OBJS_DIR)/server/main.o $(OBJS_DIR)/server/server.o $(OBJS_DIR)/server/client.o
 
 .PHONY: all clean
 
@@ -28,7 +28,7 @@ dir:
 	[ -d $(BIN_DIR) ] || mkdir $(BIN_DIR)
 
 $(SHARED_LIB): $(LIB_OBJS)
-	$(CC) -shared -Wl,-soname,$(BIN_DIR)/$(SONAME) -o $(BIN_DIR)/$(SHARED_LIB) $(LIB_OBJS)
+	$(CC) -shared -Wl,-soname,$(BIN_DIR)/$(SONAME) -o $(BIN_DIR)/$(SHARED_LIB) $(LIB_OBJS) -lpcre2-8
 	ln -fs $(SHARED_LIB) $(BIN_DIR)/$(SONAME)
 
 $(STATIC_LIB): $(LIB_OBJS)

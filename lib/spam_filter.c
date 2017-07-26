@@ -15,7 +15,6 @@ struct spam_filter_s
     rule_t** rules;
 };
 
-
 static int spam_filter_rule_check(spam_filter_t* sf, rule_t* rule, const char* msg, msg_type_t* msg_type);
 
 spam_filter_t* spam_filter_init(char* file_name)

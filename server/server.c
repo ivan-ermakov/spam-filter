@@ -4,10 +4,10 @@
 #include <uv.h>
 #include "lib/sf.h"
 #include "lib/buf.h"
+#include "lib/spam_filter.h"
+#include "lib/protocol.h"
 #include "client.h"
 #include "server.h"
-#include "spam_filter.h"
-#include "lib/protocol.h"
 
 struct server_s
 {
