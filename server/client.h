@@ -11,6 +11,7 @@ typedef struct client_s client_t;
 
 client_t* client_init(server_t* s);
 void client_free(client_t* c);
+void client_close(client_t* c);
 uv_buf_t* client_get_buf(client_t* c);
 void client_set_buf(client_t* c, uv_buf_t buf);
 uv_tcp_t* client_get_sock(client_t* c);

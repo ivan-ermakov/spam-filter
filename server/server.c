@@ -95,11 +95,6 @@ void server_free(server_t* serv)
 	uv_close((uv_handle_t*) &serv->sigterm, NULL);
 }
 
-static void on_close(uv_handle_t* sock)
-{
-	client_free((client_t*) sock->data);
-}
-
 static void on_write(uv_write_t* req, int status)
 {
 	client_t* client = (client_t*) req->handle->data;
@@ -108,7 +103,7 @@ static void on_write(uv_write_t* req, int status)
 		fprintf(stderr, "Write error: %s\n", uv_strerror(status));
 	
 	free(req);
-	uv_close((uv_handle_t*) client_get_sock(client), on_close);
+	client_close(client);
 }
 
 static void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
@@ -118,8 +113,7 @@ static void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 	if (nread < 0)
 	{
 		fprintf(stderr, "Read error: %s\n", uv_strerror(nread));
-		uv_close((uv_handle_t*) client_get_sock(client), on_close);
-		return;
+		goto free_buf;
 	}
 	else if (nread == 0)
 		return;
@@ -128,30 +122,24 @@ static void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 	if ((ret = buf_append(client_get_buf(client), buf->base, nread)) < 0)
 	{
 		fprintf(stderr, "Buffer error: %s\n", uv_strerror(ret));
-		free(buf->base);
-		uv_close((uv_handle_t*) client_get_sock(client), on_close);
-		return;
+		goto free_buf;
 	}
 
 	free(buf->base);
 		
 	char* msg = NULL;
 	ret = sf_protocol_read_request(client_get_buf(client), &msg);
-	if (ret < 0)
-	{
-		uv_close((uv_handle_t*) client_get_sock(client), on_close);
+	if (ret == SF_PROTOCOL_INCOMPLETE_MSG)
 		return;
-	}
-	else if (ret > 0)
-		return;
+	else if (ret < 0)
+		goto fail;
 
 	uv_read_stop(sock);
 
 	if (!msg)
 	{
 		fprintf(stderr, "Msg error\n");
-		uv_close((uv_handle_t*) client_get_sock(client), on_close);
-		return;
+		goto fail;
 	}
 	
 	printf("Client: '%s'\n", msg);
@@ -170,6 +158,14 @@ static void on_read(uv_stream_t* sock, ssize_t nread, const uv_buf_t* buf)
 	uv_write_t* write_req = (uv_write_t*) malloc(sizeof(uv_write_t));
 	write_req->data = client;
     uv_write(write_req, (uv_stream_t*) sock, client_get_buf(client), 1, on_write);
+	goto done;
+
+free_buf:
+	free(buf->base);
+fail:
+	client_close(client);
+done:
+	return;
 }
 
 static void on_new_connection(uv_stream_t* serv_sock, int status)
@@ -189,6 +185,6 @@ static void on_new_connection(uv_stream_t* serv_sock, int status)
     else
     {
         fprintf(stderr, "Failed to accept connection %s\n", uv_strerror(status));
-		uv_close((uv_handle_t*) client_get_sock(client), on_close);
+		client_free(client);
     }
 }

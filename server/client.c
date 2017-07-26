@@ -37,6 +37,17 @@ void client_free(client_t* c)
 	free(c);
 }
 
+static void client_on_close(uv_handle_t* sock)
+{
+	client_free((client_t*) sock->data);
+}
+
+
+void client_close(client_t* c)
+{
+    uv_close((uv_handle_t*) &c->sock, client_on_close);
+}
+
 uv_buf_t* client_get_buf(client_t* c)
 {
     return &c->buf;

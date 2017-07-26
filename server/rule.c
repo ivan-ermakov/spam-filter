@@ -22,7 +22,12 @@ rule_t* rule_init(char* line)
 	rule_t* rule = malloc(sizeof(rule_t));
 
 	char type[16];
-	sscanf(line, "%d %s %d", &rule->id, type, &rule->weight);
+	int ret = sscanf(line, "%d %s %d", &rule->id, type, &rule->weight);
+	if (ret < 3)
+	{
+		fprintf(stderr, "Invalid rule\n");
+		goto free_rule;
+	}
 
 	if (rule->id < 0)
 	{
@@ -112,131 +117,40 @@ void rule_free(rule_t* rule)
 	free(rule);
 }
 
-int rule_check(rule_t* rule, spam_filter_t* sf, const char* msg, msg_type_t* msg_type)
+int rule_check(rule_t* rule, const char* msg, msg_type_t* msg_type)
 {		
-	if (rule->type == RULE_REGEX)
+	if (rule->type != RULE_REGEX)
+		return -1;
+	
+	PCRE2_SPTR subject = (PCRE2_SPTR) msg;
+	size_t subject_length = strlen(msg);
+
+	int rc = pcre2_match(
+		rule->re,             /* the compiled pattern */
+		subject,              /* the subject string */
+		subject_length,       /* the length of the subject */
+		0,                    /* start at offset 0 in the subject */
+		0,                    /* default options */
+		rule->match_data,     /* block for storing the result */
+		NULL);                /* use default match context */
+
+	/* Matching failed: handle error cases */
+
+	if (rc < 0)
 	{
-		PCRE2_SPTR subject = (PCRE2_SPTR) msg;
-		size_t subject_length = strlen(msg);
-
-		int rc = pcre2_match(
-			rule->re,             /* the compiled pattern */
-			subject,              /* the subject string */
-			subject_length,       /* the length of the subject */
-			0,                    /* start at offset 0 in the subject */
-			0,                    /* default options */
-			rule->match_data,     /* block for storing the result */
-			NULL);                /* use default match context */
-
-		/* Matching failed: handle error cases */
-
-		if (rc < 0)
+		switch(rc)
 		{
-			switch(rc)
-			{
-				case PCRE2_ERROR_NOMATCH:
-					*msg_type = MSG_TYPE_HAM;
-					return 0;
-				default:
-					printf("Matching error %d\n", rc);
-					*msg_type = MSG_TYPE_HAM;
-					return rc;
-			}
-		}
-		
-		*msg_type = MSG_TYPE_SPAM;
-	}
-	else
-	{
-		int ret = 0;
-		int* vals = NULL;
-		int vals_size = 0;
-		char* token;
-		char* exp = rule->rpn;
-
-		ret = get_token(exp, &token);
-
-		while (ret > 0)
-		{
-			exp += ret;
-
-			if (isdigit(*token)) /* if value */
-			{
-				int id = strtol(token, NULL, 10);
+			case PCRE2_ERROR_NOMATCH:
 				*msg_type = MSG_TYPE_HAM;
-				int ret = rule_check(spam_filter_get_rule(sf, id), sf, msg, msg_type); /* write value */
-				if (ret < 0)
-				{
-					fprintf(stderr, "rule_check error %d\n", ret);
-					ret = 1;
-					goto done;
-				}
-
-				vals = realloc(vals, ++vals_size * sizeof(int));
-				vals[vals_size - 1] = *msg_type;
-			}
-			else if (strcmp(token, "!") == 0)
-			{
-				if (vals_size < 1)
-				{
-					fprintf(stderr, "Not enough values\n");
-					ret = 2;
-					goto done;
-				}
-
-				vals[vals_size - 1] = !vals[vals_size - 1];
-			}
-			else if (strcmp(token, "&&") == 0)
-			{
-				if (vals_size < 2)
-				{
-					fprintf(stderr, "Not enough values\n");
-					ret = 2;
-					goto done;
-				}
-
-				--vals_size;
-				vals[vals_size - 1] = vals[vals_size - 1] && vals[vals_size];
-			}
-			else if (strcmp(token, "||") == 0)
-			{
-				if (vals_size < 2)
-				{
-					fprintf(stderr, "Not enough values\n");
-					ret = 2;
-					goto done;
-				}
-
-				--vals_size;
-				vals[vals_size - 1] = vals[vals_size - 1] || vals[vals_size];
-			}
-			else
-			{
-				fprintf(stderr, "Unknown operator: %s\n", token);
-				ret = 3;
-				goto done;
-			}
-
-			free(token);
-			ret = get_token(exp, &token);
+				return 0;
+			default:
+				printf("Matching error %d\n", rc);
+				*msg_type = MSG_TYPE_HAM;
+				return rc;
 		}
-
-		if (vals_size == 1)
-		{
-			*msg_type = vals[0];
-			ret = 0;
-		}
-		else
-		{
-			fprintf(stderr, "Invalid values\n");
-			ret = 4;
-		}
-
-		done:
-		free(token);
-		free(vals);
-		return ret;
 	}
+	
+	*msg_type = MSG_TYPE_SPAM;
 
 	return 0;
 }
@@ -249,4 +163,14 @@ int rule_get_id(rule_t* rule)
 int rule_get_weight(rule_t* rule)
 {
 	return rule->weight;
+}
+
+rule_type_t rule_get_type(rule_t* rule)
+{
+	return rule->type;
+}
+
+char* rule_get_rpn(rule_t* rule)
+{
+	return rule->rpn;
 }

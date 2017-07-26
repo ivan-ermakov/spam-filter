@@ -1,6 +1,7 @@
-0 regex 99 viagra
-1 regex -99 diplom
-2 regex 100 \d+\s*min
+$ cat rules.txt
+0 regex 1 viagra
+1 regex 2 diplom
+2 bool 100 (1 && 2)
 3 regex 70 exclusively
 4 regex -100 unsubscribe
 5 regex 19 (fail(+palm
@@ -20,3 +21,6 @@
 18 bool 4 !
 19 bool 5 || &&
 20 bool 6 )
+21 regex 99 viagra
+22 regex -99 diplom
+23 regex 100 \d+\s*min

@@ -89,9 +89,7 @@ static void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 	if (nread < 0)
 	{
 		fprintf(stderr, "Read error: %s\n", uv_strerror(nread));
-		free(buf->base);
-		client_free(client);
-		return;
+		goto free_buf;
 	}
 	else if (nread == 0)
 		return;
@@ -99,14 +97,18 @@ static void on_read(uv_stream_t* server, ssize_t nread, const uv_buf_t* buf)
 	buf_append(&client->buf, buf->base, nread);
 	free(buf->base);
 
-
 	int error;
 	msg_type_t msg_type;
 	
-	if (sf_protocol_read_response(&client->buf, &error, &msg_type) != 0)
+	if (sf_protocol_read_response(&client->buf, &error, &msg_type) != SF_PROTOCOL_COMPLETE_MSG)
 		return;
 	
 	printf("Server <%d>: %s\n", error, msg_type == MSG_TYPE_HAM ? "HAM" : "SPAM");
+	goto done;
+
+free_buf:
+	free(buf->base);
+done:
 	client_free(client);
 }
 
