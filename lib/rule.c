@@ -61,7 +61,8 @@ rule_t* rule_init(char* line)
 	if (!*line)
 		goto free_rule;
 
-	line[strlen(line) - 1] = '\0'; /* skip \n */
+	if (line[strlen(line) - 1] == '\n')
+		line[strlen(line) - 1] = '\0'; /* skip \n */
 	
 	if (rule->type == RULE_REGEX)
 	{
