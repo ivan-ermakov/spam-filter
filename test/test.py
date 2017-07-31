@@ -1,7 +1,7 @@
 import os.path
 import ctypes
 
-libsf = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__)) + "/bin/libsf.so.1.0")
+libsf = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__)) + "/../bin/libsf.so.1.0")
 
 MSG_TYPE_HAM = 0
 MSG_TYPE_SPAM = 1

@@ -1,7 +1,7 @@
 import os.path
 import ctypes
 
-libsf = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__)) + "/bin/libsf.so.1.0")
+libsf = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__)) + "/../bin/libsf.so.1.0")
 
 libsf.rule_init.argtypes = [ctypes.c_char_p]
 libsf.rule_init.restype = ctypes.c_void_p
